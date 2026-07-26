@@ -292,7 +292,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         handle.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         handle.setClipToOutline(true);
         handle.setClickable(true);
-        handle.setElevation(dp(8));
+        handle.setElevation(dp(12));
         handle.setContentDescription("EchoViz controls");
         updateHandleForMagLensMode(false);
 
@@ -433,6 +433,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         menu.setOrientation(LinearLayout.VERTICAL);
         menu.setPadding(dp(8), dp(8), dp(8), dp(8));
         menu.setBackgroundResource(R.drawable.overlay_menu);
+        menu.setElevation(dp(14));
 
         LinearLayout scaleRow = new LinearLayout(this);
         scaleRow.setGravity(Gravity.CENTER);
@@ -550,6 +551,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         exitDialog.setOrientation(LinearLayout.VERTICAL);
         exitDialog.setPadding(dp(16), dp(16), dp(16), dp(14));
         exitDialog.setBackgroundResource(R.drawable.overlay_menu);
+        exitDialog.setElevation(dp(16));
 
         TextView title = new TextView(this);
         title.setText("Close EchoViz?");
