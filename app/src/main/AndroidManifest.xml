@@ -17,7 +17,7 @@
             android:excludeFromRecents="true"
             android:exported="true"
             android:label="@string/reader_mode"
-            android:taskAffinity="com.example.echoviz.reader">
+            android:taskAffinity="com.syncrotellabs.echoviz.reader">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

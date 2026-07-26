@@ -1,12 +1,12 @@
-package com.example.echoviz;
+package com.syncrotellabs.echoviz;
 
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 
 final class EchoVizRuntime {
-    static final String ACTION_RESTORE_OVERLAY = "com.example.echoviz.action.RESTORE_OVERLAY";
-    static final String EXTRA_SHOW_ON_HOME = "com.example.echoviz.extra.SHOW_ON_HOME";
+    static final String ACTION_RESTORE_OVERLAY = "com.syncrotellabs.echoviz.action.RESTORE_OVERLAY";
+    static final String EXTRA_SHOW_ON_HOME = "com.syncrotellabs.echoviz.extra.SHOW_ON_HOME";
 
     private static final String PREFS_NAME = "echoviz_runtime";
     private static final String KEY_ACTIVE = "active";

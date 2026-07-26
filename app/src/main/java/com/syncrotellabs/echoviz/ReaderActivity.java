@@ -1,4 +1,4 @@
-package com.example.echoviz;
+package com.syncrotellabs.echoviz;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -13,8 +13,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 public class ReaderActivity extends Activity {
-    public static final String EXTRA_READER_TEXT = "com.example.echoviz.extra.READER_TEXT";
-    public static final String EXTRA_RETURN_TO_SOURCE_TASK = "com.example.echoviz.extra.RETURN_TO_SOURCE_TASK";
+    public static final String EXTRA_READER_TEXT = "com.syncrotellabs.echoviz.extra.READER_TEXT";
+    public static final String EXTRA_RETURN_TO_SOURCE_TASK = "com.syncrotellabs.echoviz.extra.RETURN_TO_SOURCE_TASK";
 
     private TextView body;
     private TextView sizeLabel;

@@ -1,4 +1,4 @@
-package com.example.echoviz;
+package com.syncrotellabs.echoviz;
 
 import android.content.Context;
 import android.provider.Settings;

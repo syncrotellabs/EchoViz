@@ -62,7 +62,7 @@ EchoViz/
   app/
     src/main/
       AndroidManifest.xml
-      java/com/example/echoviz/
+      java/com/syncrotellabs/echoviz/
         EchoVizAccessibilityService.java
         EchoVizRuntime.java
         FontScaleBaseline.java
@@ -107,6 +107,8 @@ The debug APK is generated at:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
+The app id is `com.syncrotellabs.echoviz`. If upgrading from an early local build that used `com.example.echoviz`, uninstall the old prototype or disable its Accessibility service before installing this one.
+
 ### Install On A Connected Phone
 
 Enable USB debugging on the Android phone, connect it to the computer, then run:
@@ -141,21 +143,21 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 Enable the accessibility service for local testing:
 
 ```powershell
-adb shell settings put secure enabled_accessibility_services com.example.echoviz/com.example.echoviz.EchoVizAccessibilityService
+adb shell settings put secure enabled_accessibility_services com.syncrotellabs.echoviz/com.syncrotellabs.echoviz.EchoVizAccessibilityService
 adb shell settings put secure accessibility_enabled 1
 ```
 
 Launch EchoViz:
 
 ```powershell
-adb shell am start -n com.example.echoviz/.MainActivity
+adb shell am start -n com.syncrotellabs.echoviz/.LaunchActivity
 ```
 
 ## Play Store Notes
 
 Before Play Store release, EchoViz will need:
 
-- Production package/application id instead of `com.example.echoviz`.
+- Final package/application id review before the first Play Store upload. The current id is `com.syncrotellabs.echoviz`.
 - Release signing key and Android App Bundle build.
 - Privacy policy.
 - Store listing assets.

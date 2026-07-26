@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace "com.example.echoviz"
+    namespace "com.syncrotellabs.echoviz"
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.example.echoviz"
+        applicationId "com.syncrotellabs.echoviz"
         minSdk 26
         targetSdk 36
         versionCode 1

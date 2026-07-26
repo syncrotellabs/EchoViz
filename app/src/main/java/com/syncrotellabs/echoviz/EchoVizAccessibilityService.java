@@ -1,4 +1,4 @@
-package com.example.echoviz;
+package com.syncrotellabs.echoviz;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityService.MagnificationController;
