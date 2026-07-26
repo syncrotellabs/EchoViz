@@ -6,7 +6,6 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -28,7 +27,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (isSetupComplete()) {
+        if (SetupStatus.isComplete(this)) {
             restoreBubbleAndClose();
             return;
         }
@@ -38,7 +37,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (isSetupComplete()) {
+        if (SetupStatus.isComplete(this)) {
             restoreBubbleAndClose();
             return;
         }
@@ -50,7 +49,7 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (isSetupComplete()) {
+        if (SetupStatus.isComplete(this)) {
             restoreBubbleAndClose();
             return;
         }
@@ -170,7 +169,7 @@ public class MainActivity extends Activity {
     }
 
     private void updateStatuses() {
-        boolean accessibilityReady = isAccessibilityServiceEnabled();
+        boolean accessibilityReady = SetupStatus.isAccessibilityServiceEnabled(this);
         boolean fontReady = Settings.System.canWrite(this);
         float baseline = FontScaleBaseline.ensure(this);
         float current = FontScaleBaseline.current(this);
@@ -207,7 +206,7 @@ public class MainActivity extends Activity {
     }
 
     private void continueSetup() {
-        if (!isAccessibilityServiceEnabled()) {
+        if (!SetupStatus.isAccessibilityServiceEnabled(this)) {
             openAccessibilitySettings();
             return;
         }
@@ -216,10 +215,6 @@ public class MainActivity extends Activity {
             return;
         }
         openReaderSample();
-    }
-
-    private boolean isSetupComplete() {
-        return isAccessibilityServiceEnabled() && Settings.System.canWrite(this);
     }
 
     private void restoreBubbleAndClose() {
@@ -231,18 +226,6 @@ public class MainActivity extends Activity {
         EchoVizRuntime.requestShortcutRestore(this);
         finishAndRemoveTask();
         overridePendingTransition(0, 0);
-    }
-
-    private boolean isAccessibilityServiceEnabled() {
-        String enabledServices = Settings.Secure.getString(
-                getContentResolver(),
-                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        );
-        if (TextUtils.isEmpty(enabledServices)) {
-            return false;
-        }
-        String expected = getPackageName() + "/" + EchoVizAccessibilityService.class.getName();
-        return enabledServices.toLowerCase().contains(expected.toLowerCase());
     }
 
     private void openAccessibilitySettings() {

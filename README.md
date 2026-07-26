@@ -66,8 +66,10 @@ EchoViz/
         EchoVizAccessibilityService.java
         EchoVizRuntime.java
         FontScaleBaseline.java
+        LaunchActivity.java
         MainActivity.java
         ReaderActivity.java
+        SetupStatus.java
       res/
         drawable/
         drawable-nodpi/
