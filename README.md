@@ -2,7 +2,9 @@
 
 EchoViz is a native Android accessibility prototype for low-vision reading. It provides a movable floating Echo logo button that opens quick controls for larger text, Reading Mode, MagLens, and app shutdown.
 
-The app was built for a real-world use case: making phone reading more practical for someone with severe vision loss while keeping the controls simple enough to use repeatedly.
+It started as a practical app for my wife: Android's built-in options help, but they can feel clumsy, and she needed a better way to read and navigate on her phone.
+
+The app is built for a real-world use case: making phone reading more practical for someone with severe vision loss while keeping the controls simple enough to use repeatedly.
 
 ## Current Features
 
