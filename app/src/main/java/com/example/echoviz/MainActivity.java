@@ -23,16 +23,25 @@ public class MainActivity extends Activity {
     private TextView readingStatus;
     private TextView magLensStatus;
     private Button setupButton;
+    private boolean closingAfterShortcutRestore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (isSetupComplete()) {
+            restoreBubbleAndClose();
+            return;
+        }
         setContentView(buildContent());
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        if (isSetupComplete()) {
+            restoreBubbleAndClose();
+            return;
+        }
         EchoVizRuntime.requestRestore(this);
         updateStatuses();
     }
@@ -41,6 +50,10 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        if (isSetupComplete()) {
+            restoreBubbleAndClose();
+            return;
+        }
         updateStatuses();
     }
 
@@ -203,6 +216,21 @@ public class MainActivity extends Activity {
             return;
         }
         openReaderSample();
+    }
+
+    private boolean isSetupComplete() {
+        return isAccessibilityServiceEnabled() && Settings.System.canWrite(this);
+    }
+
+    private void restoreBubbleAndClose() {
+        if (closingAfterShortcutRestore) {
+            return;
+        }
+
+        closingAfterShortcutRestore = true;
+        EchoVizRuntime.requestShortcutRestore(this);
+        finishAndRemoveTask();
+        overridePendingTransition(0, 0);
     }
 
     private boolean isAccessibilityServiceEnabled() {

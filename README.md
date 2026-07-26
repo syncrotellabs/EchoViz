@@ -21,6 +21,7 @@ The app is built for a real-world use case: making phone reading more practical 
 - Floating overlays hide on the launcher/home screen.
 - `Exit EchoViz` confirmation can shut down the overlay without disabling the Accessibility permission.
 - Launching EchoViz again restores the overlay service state.
+- After setup is complete, tapping the EchoViz launcher shortcut acts as a bubble restore shortcut instead of reopening setup.
 
 ## Important Android Behavior
 
@@ -118,6 +119,8 @@ After installing:
 2. Enable `EchoViz Floating Controls` in Android Accessibility settings.
 3. Allow system setting modification for text-size controls.
 4. Use `Use Current as 100%` if the current phone font size should become the EchoViz baseline.
+
+After those first-time setup steps are complete, opening EchoViz from the launcher simply restores the floating bubble and immediately closes the setup activity.
 
 ## Emulator Smoke Test
 

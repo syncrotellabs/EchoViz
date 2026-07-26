@@ -69,6 +69,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
     private boolean dragging;
     private boolean magLensActive;
     private boolean hiddenOnHome;
+    private boolean showOnHomeFromShortcut;
     private final Set<String> homePackages = new LinkedHashSet<>();
 
     @Override
@@ -78,6 +79,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         mainHandler = new Handler(Looper.getMainLooper());
         registerRuntimeReceiver();
         refreshHomePackages();
+        showOnHomeFromShortcut = EchoVizRuntime.consumeShowOnHomeRestore(this);
         updateOverlayVisibility(activeWindowPackageName());
         scheduleOverlayRefresh(500);
         scheduleOverlayRefresh(1500);
@@ -124,11 +126,22 @@ public class EchoVizAccessibilityService extends AccessibilityService {
             hideAllEchoVizOverlays();
             return;
         }
+        if (!showOnHomeFromShortcut && EchoVizRuntime.consumeShowOnHomeRestore(this)) {
+            showOnHomeFromShortcut = true;
+        }
         if (isHomePackage(packageName)) {
+            if (showOnHomeFromShortcut) {
+                hiddenOnHome = false;
+                showHandle();
+                return;
+            }
             hideOverlaysForHomeScreen();
             return;
         }
 
+        if (!packageName.isEmpty() && !packageName.equals(getPackageName())) {
+            showOnHomeFromShortcut = false;
+        }
         if (hiddenOnHome) {
             hiddenOnHome = false;
         }
@@ -154,6 +167,8 @@ public class EchoVizAccessibilityService extends AccessibilityService {
                 if (intent == null || !EchoVizRuntime.ACTION_RESTORE_OVERLAY.equals(intent.getAction())) {
                     return;
                 }
+                showOnHomeFromShortcut = intent.getBooleanExtra(EchoVizRuntime.EXTRA_SHOW_ON_HOME, false)
+                        || EchoVizRuntime.consumeShowOnHomeRestore(context);
                 hiddenOnHome = false;
                 showHandle();
                 scheduleOverlayRefresh(400);
@@ -264,10 +279,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
             return;
         }
         if (handle != null) {
-            if (handle.isAttachedToWindow()) {
-                return;
-            }
-            handle = null;
+            return;
         }
 
         DisplayMetrics metrics = getResources().getDisplayMetrics();
@@ -325,7 +337,11 @@ public class EchoVizAccessibilityService extends AccessibilityService {
 
     private void hideHandle() {
         if (handle != null) {
-            windowManager.removeView(handle);
+            try {
+                windowManager.removeView(handle);
+            } catch (IllegalArgumentException ignored) {
+                // The overlay can already be detached during service restarts.
+            }
             handle = null;
         }
     }
