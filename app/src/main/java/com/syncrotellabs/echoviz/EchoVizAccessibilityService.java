@@ -458,13 +458,13 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         LinearLayout modeRow = new LinearLayout(this);
         modeRow.setGravity(Gravity.CENTER);
         modeRow.setOrientation(LinearLayout.HORIZONTAL);
-        Button readingMode = menuButton("Reading Mode");
+        Button readingMode = menuButton("Reading\nMode");
         readingMode.setMinWidth(dp(168));
         readingMode.setOnClickListener(v -> openReadingMode());
         modeRow.addView(readingMode);
 
         magLensButton = menuButton(magLensMenuLabel());
-        magLensButton.setMinWidth(dp(210));
+        magLensButton.setMinWidth(dp(168));
         magLensButton.setTextSize(18);
         magLensButton.setOnClickListener(v -> toggleMagnification());
         modeRow.addView(magLensButton);
