@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EchoViz</string>
+    <string name="reader_mode">Reading Mode</string>
+    <string name="mag_lens">MagLens</string>
+    <string name="accessibility_service_name">EchoViz Floating Controls</string>
+    <string name="accessibility_service_summary">Floating controls for larger text, reading mode, and magnification.</string>
+    <string name="accessibility_service_description">EchoViz shows a movable floating button. It helps low-vision users adjust Android text size, open visible or shared text in Reading Mode, and toggle magnification. EchoViz does not store or transmit screen content.</string>
+</resources>
