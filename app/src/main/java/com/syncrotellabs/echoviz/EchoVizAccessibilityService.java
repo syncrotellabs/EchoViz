@@ -100,7 +100,12 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
                 || type == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
             CharSequence packageName = event.getPackageName();
-            updateOverlayVisibility(packageName == null ? "" : packageName.toString());
+            String currentPackage = packageName == null ? "" : packageName.toString();
+            if (isEchoVizActivityEvent(event)) {
+                hideAllEchoVizOverlays();
+                return;
+            }
+            updateOverlayVisibility(currentPackage);
             scheduleOverlayRefresh(250);
         }
     }
@@ -148,6 +153,20 @@ public class EchoVizAccessibilityService extends AccessibilityService {
             hiddenOnHome = false;
         }
         showHandle();
+    }
+
+    private boolean isEchoVizActivityEvent(AccessibilityEvent event) {
+        if (event == null || event.getPackageName() == null || event.getClassName() == null) {
+            return false;
+        }
+        if (!getPackageName().contentEquals(event.getPackageName())) {
+            return false;
+        }
+
+        String className = event.getClassName().toString();
+        return MainActivity.class.getName().equals(className)
+                || ReaderActivity.class.getName().equals(className)
+                || LaunchActivity.class.getName().equals(className);
     }
 
     private void scheduleOverlayRefresh(long delayMillis) {
@@ -486,6 +505,16 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         speechRow.addView(stopVoice);
         menu.addView(speechRow);
 
+        Button doctorButton = menuButton("Setup Doctor");
+        doctorButton.setTextSize(17);
+        doctorButton.setOnClickListener(v -> openSetupDoctor());
+        LinearLayout.LayoutParams doctorParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        doctorParams.setMargins(dp(4), dp(6), dp(4), dp(0));
+        menu.addView(doctorButton, doctorParams);
+
         Button exitButton = dangerButton("Exit EchoViz");
         exitButton.setOnClickListener(v -> showExitConfirmation());
         LinearLayout.LayoutParams exitParams = new LinearLayout.LayoutParams(
@@ -707,6 +736,14 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         intent.putExtra(ReaderActivity.EXTRA_READER_TEXT, text);
         intent.putExtra(ReaderActivity.EXTRA_RETURN_TO_SOURCE_TASK, true);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        removeMenu();
+    }
+
+    private void openSetupDoctor() {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.putExtra(MainActivity.EXTRA_OPEN_DOCTOR, true);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
         removeMenu();
     }

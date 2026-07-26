@@ -13,21 +13,28 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class MainActivity extends Activity {
+    static final String EXTRA_OPEN_DOCTOR = "com.syncrotellabs.echoviz.extra.OPEN_DOCTOR";
+    private static final String ACTION_TTS_SETTINGS = "com.android.settings.TTS_SETTINGS";
+
     private TextView allStatus;
     private TextView floatingStatus;
+    private TextView bubbleStatus;
     private TextView fontStatus;
     private TextView baselineStatus;
     private TextView readingStatus;
     private TextView magLensStatus;
-    private Button setupButton;
+    private TextView voiceStatus;
+    private Button repairButton;
+    private Button closeButton;
     private boolean closingAfterShortcutRestore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (SetupStatus.isComplete(this)) {
+        if (shouldRestoreAndClose()) {
             restoreBubbleAndClose();
             return;
         }
@@ -37,11 +44,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (SetupStatus.isComplete(this)) {
+        if (shouldRestoreAndClose()) {
             restoreBubbleAndClose();
             return;
         }
-        EchoVizRuntime.requestRestore(this);
+        if (!isDoctorRequested()) {
+            EchoVizRuntime.requestRestore(this);
+        }
         updateStatuses();
     }
 
@@ -49,11 +58,20 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (SetupStatus.isComplete(this)) {
+        if (shouldRestoreAndClose()) {
             restoreBubbleAndClose();
             return;
         }
         updateStatuses();
+    }
+
+    private boolean shouldRestoreAndClose() {
+        return SetupStatus.isComplete(this) && !isDoctorRequested();
+    }
+
+    private boolean isDoctorRequested() {
+        Intent intent = getIntent();
+        return intent != null && intent.getBooleanExtra(EXTRA_OPEN_DOCTOR, false);
     }
 
     private ScrollView buildContent() {
@@ -75,25 +93,38 @@ public class MainActivity extends Activity {
         allStatus.setPadding(0, dp(18), 0, dp(10));
         root.addView(allStatus);
 
-        setupButton = primaryButton("Enable EchoViz Features");
-        setupButton.setOnClickListener(v -> continueSetup());
-        root.addView(setupButton);
+        repairButton = primaryButton("Repair EchoViz");
+        repairButton.setOnClickListener(v -> repairEchoViz());
+        root.addView(repairButton);
 
-        root.addView(section("Feature Setup"));
+        closeButton = compactButton("Back to Page");
+        closeButton.setOnClickListener(v -> closeDoctor());
+        root.addView(closeButton);
+
+        root.addView(section("Health Checks"));
 
         floatingStatus = statusText();
         root.addView(featureCard(
                 "Floating Button",
-                "Shows the movable Echo logo control on top of other apps.",
+                "Required for the movable EchoViz bubble and popup controls.",
                 floatingStatus,
                 "Open Accessibility Settings",
                 v -> openAccessibilitySettings()
         ));
 
+        bubbleStatus = statusText();
+        root.addView(featureCard(
+                "Bubble Startup",
+                "Restores the floating button after EchoViz has been closed or dragged away.",
+                bubbleStatus,
+                "Restart Bubble",
+                v -> restartBubble()
+        ));
+
         fontStatus = statusText();
         root.addView(featureCard(
                 "Text Size Control",
-                "Uses the phone's saved baseline as EchoViz 100%, then applies +, 100%, and - from there.",
+                "Lets +, 100%, and - change Android text size from EchoViz.",
                 fontStatus,
                 "Allow Text Size Control",
                 v -> openWriteSettings()
@@ -102,7 +133,7 @@ public class MainActivity extends Activity {
         baselineStatus = statusText();
         root.addView(featureCard(
                 "Text Size Baseline",
-                "Set EchoViz 100% to the phone's current Android font size before using the overlay controls.",
+                "Keeps EchoViz 100% tied to the phone text size you choose.",
                 baselineStatus,
                 "Use Current as 100%",
                 v -> captureFontBaseline()
@@ -111,23 +142,32 @@ public class MainActivity extends Activity {
         readingStatus = statusText();
         root.addView(featureCard(
                 "Reading Mode",
-                "Opens shared text, or visible screen text when Accessibility is enabled.",
+                "Opens shared text or the readable text Android exposes from the current screen.",
                 readingStatus,
                 "Try Reading Mode",
                 v -> openReaderSample()
         ));
 
+        voiceStatus = statusText();
+        root.addView(featureCard(
+                "Read Aloud",
+                "Uses Android text-to-speech for spoken Reading Mode and screen text.",
+                voiceStatus,
+                "Open Voice Settings",
+                v -> openTextToSpeechSettings()
+        ));
+
         magLensStatus = statusText();
         root.addView(featureCard(
                 "MagLens",
-                "Toggles Android magnification from the floating Echo logo menu.",
+                "Uses Android magnification from the floating EchoViz menu.",
                 magLensStatus,
                 "Open Accessibility Settings",
                 v -> openAccessibilitySettings()
         ));
 
         TextView privacy = text(
-                "EchoViz does not store or transmit screen content. Android requires you to manually enable Accessibility and text-size control.",
+                "EchoViz keeps this local. Android requires manual approval for Accessibility and text-size control.",
                 17,
                 false
         );
@@ -153,10 +193,10 @@ public class MainActivity extends Activity {
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
 
-        TextView title = text("EchoViz", 38, true);
+        TextView title = text("Setup Doctor", 34, true);
         copy.addView(title);
 
-        TextView subtitle = text("Set up larger text, Reading Mode, and MagLens.", 20, false);
+        TextView subtitle = text("Check and repair EchoViz features.", 20, false);
         subtitle.setPadding(0, dp(4), 0, 0);
         copy.addView(subtitle);
 
@@ -171,15 +211,23 @@ public class MainActivity extends Activity {
     private void updateStatuses() {
         boolean accessibilityReady = SetupStatus.isAccessibilityServiceEnabled(this);
         boolean fontReady = Settings.System.canWrite(this);
+        boolean bubbleActive = EchoVizRuntime.isActive(this);
+        boolean voiceReady = SetupStatus.hasTextToSpeechEngine(this);
         float baseline = FontScaleBaseline.ensure(this);
         float current = FontScaleBaseline.current(this);
 
         floatingStatus.setText(accessibilityReady
-                ? "READY: the side logo button can appear."
+                ? "READY: EchoViz Floating Controls is enabled."
                 : "NEEDS SETUP: enable EchoViz Floating Controls.");
 
+        bubbleStatus.setText(!accessibilityReady
+                ? "WAITING: enable Accessibility first."
+                : bubbleActive
+                ? "READY: EchoViz is allowed to show the bubble."
+                : "OFF: EchoViz was shut down. Repair will restart it.");
+
         fontStatus.setText(fontReady
-                ? "READY: +, 100%, and - adjust text relative to the saved baseline."
+                ? "READY: +, 100%, and - can change system text size."
                 : "NEEDS SETUP: allow EchoViz to modify system settings.");
 
         baselineStatus.setText("EchoViz 100% = Android " + FontScaleBaseline.percentLabel(baseline)
@@ -189,32 +237,57 @@ public class MainActivity extends Activity {
                 ? "READY: shared text and visible screen text can open in Reading Mode."
                 : "PARTIAL: shared text works now; screen text needs Accessibility.");
 
+        voiceStatus.setText(voiceReady
+                ? "READY: Android text-to-speech is available."
+                : "NEEDS SETUP: install or enable an Android text-to-speech engine.");
+
         magLensStatus.setText(accessibilityReady
                 ? "READY: MagLens can use Android magnification."
                 : "NEEDS SETUP: MagLens needs EchoViz Floating Controls enabled.");
 
-        if (accessibilityReady && fontReady) {
-            allStatus.setText("All EchoViz features are ready.");
-            setupButton.setText("Open Reading Mode Test");
-        } else if (!accessibilityReady) {
-            allStatus.setText("One main step left: enable EchoViz Floating Controls.");
-            setupButton.setText("Enable Floating Button, Reading Mode, and MagLens");
+        if (!accessibilityReady) {
+            allStatus.setText("Setup Doctor found one main issue: enable EchoViz Floating Controls.");
+        } else if (!fontReady) {
+            allStatus.setText("Setup Doctor found one main issue: allow text-size control.");
+        } else if (!bubbleActive) {
+            allStatus.setText("Setup Doctor found one issue: the EchoViz bubble is turned off.");
+        } else if (!voiceReady) {
+            allStatus.setText("EchoViz core is ready. Read Aloud needs Android text-to-speech.");
         } else {
-            allStatus.setText("One main step left: allow text-size control.");
-            setupButton.setText("Enable + / 100% / - Text Controls");
+            allStatus.setText("EchoViz looks healthy.");
         }
+
+        closeButton.setText(SetupStatus.isComplete(this) ? "Back to Page" : "Close Setup Doctor");
     }
 
-    private void continueSetup() {
+    private void repairEchoViz() {
+        FontScaleBaseline.ensure(this);
         if (!SetupStatus.isAccessibilityServiceEnabled(this)) {
             openAccessibilitySettings();
             return;
         }
+        EchoVizRuntime.requestShortcutRestore(this);
         if (!Settings.System.canWrite(this)) {
             openWriteSettings();
             return;
         }
-        openReaderSample();
+        if (!SetupStatus.hasTextToSpeechEngine(this)) {
+            Toast.makeText(this, "EchoViz bubble restored. Read Aloud needs Android voice settings.", Toast.LENGTH_LONG).show();
+            openTextToSpeechSettings();
+            return;
+        }
+        Toast.makeText(this, "EchoViz repaired. Bubble restored.", Toast.LENGTH_SHORT).show();
+        updateStatuses();
+    }
+
+    private void restartBubble() {
+        if (!SetupStatus.isAccessibilityServiceEnabled(this)) {
+            openAccessibilitySettings();
+            return;
+        }
+        EchoVizRuntime.requestShortcutRestore(this);
+        Toast.makeText(this, "EchoViz bubble restored.", Toast.LENGTH_SHORT).show();
+        updateStatuses();
     }
 
     private void restoreBubbleAndClose() {
@@ -224,6 +297,14 @@ public class MainActivity extends Activity {
 
         closingAfterShortcutRestore = true;
         EchoVizRuntime.requestShortcutRestore(this);
+        finishAndRemoveTask();
+        overridePendingTransition(0, 0);
+    }
+
+    private void closeDoctor() {
+        if (SetupStatus.isAccessibilityServiceEnabled(this)) {
+            EchoVizRuntime.requestShortcutRestore(this);
+        }
         finishAndRemoveTask();
         overridePendingTransition(0, 0);
     }
@@ -238,9 +319,18 @@ public class MainActivity extends Activity {
         startActivity(intent);
     }
 
+    private void openTextToSpeechSettings() {
+        Intent intent = new Intent(ACTION_TTS_SETTINGS);
+        if (intent.resolveActivity(getPackageManager()) == null) {
+            intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+        }
+        startActivity(intent);
+    }
+
     private void captureFontBaseline() {
         FontScaleBaseline.captureCurrent(this);
         updateStatuses();
+        Toast.makeText(this, "Current phone text saved as EchoViz 100%.", Toast.LENGTH_SHORT).show();
     }
 
     private void openReaderSample() {
