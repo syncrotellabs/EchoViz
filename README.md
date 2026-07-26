@@ -16,6 +16,8 @@ The app is built for a real-world use case: making phone reading more practical 
 - Text scaling is relative to the user's captured baseline, so EchoViz `100%` means "the phone text size when setup was completed."
 - Reading Mode for large, calm display of shared text or text exposed through Android Accessibility.
 - Reading Mode includes a `Back to page` button that returns to the underlying app/task.
+- Read Aloud uses Android Text-to-Speech to speak the visible page text or the current Reading Mode text.
+- Stop Voice stops the current Text-to-Speech playback.
 - MagLens uses Android magnification at 2x.
 - MagLens includes a translucent center pan handle and an on-lens close button.
 - Floating overlays hide on the launcher/home screen.
@@ -30,6 +32,7 @@ EchoViz uses Android Accessibility APIs and system text-size settings. That mean
 - The `+`, `100%`, and `-` buttons adjust Android's system font scale relative to EchoViz's saved baseline.
 - Android does not allow one accessibility overlay to directly restyle text inside every third-party app or webpage independently.
 - Some apps expose rich text to Accessibility; others expose very little. Reading Mode quality depends on what the foreground app makes available.
+- Read Aloud uses Android's built-in Text-to-Speech engine. Available voices and offline behavior depend on the TTS engine installed on the phone.
 - MagLens uses Android's built-in magnification controller, so it magnifies the screen rather than rewriting app layouts.
 
 ## Privacy
@@ -69,6 +72,7 @@ EchoViz/
         LaunchActivity.java
         MainActivity.java
         ReaderActivity.java
+        EchoVizSpeech.java
         SetupStatus.java
       res/
         drawable/

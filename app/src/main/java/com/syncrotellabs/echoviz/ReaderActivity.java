@@ -19,6 +19,7 @@ public class ReaderActivity extends Activity {
     private TextView body;
     private TextView sizeLabel;
     private LinearLayout root;
+    private final EchoVizSpeech speech = new EchoVizSpeech();
     private int textSizeSp = 30;
     private boolean darkMode = false;
 
@@ -35,6 +36,12 @@ public class ReaderActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         showText(readIntentText(intent));
+    }
+
+    @Override
+    protected void onDestroy() {
+        speech.shutdown();
+        super.onDestroy();
     }
 
     private LinearLayout buildContent() {
@@ -88,6 +95,31 @@ public class ReaderActivity extends Activity {
 
         root.addView(toolbar);
 
+        LinearLayout speechToolbar = new LinearLayout(this);
+        speechToolbar.setGravity(Gravity.CENTER_VERTICAL);
+        speechToolbar.setOrientation(LinearLayout.HORIZONTAL);
+        speechToolbar.setPadding(0, dp(10), 0, 0);
+
+        Button readAloud = toolButton("Read Aloud");
+        readAloud.setOnClickListener(v -> readAloud());
+        speechToolbar.addView(readAloud, new LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f
+        ));
+
+        Button stopVoice = toolButton("Stop Voice");
+        stopVoice.setOnClickListener(v -> stopVoice());
+        LinearLayout.LayoutParams stopParams = new LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f
+        );
+        stopParams.setMargins(dp(10), 0, 0, 0);
+        speechToolbar.addView(stopVoice, stopParams);
+
+        root.addView(speechToolbar);
+
         ScrollView scrollView = new ScrollView(this);
         scrollView.setPadding(0, dp(16), 0, 0);
         body = new TextView(this);
@@ -109,6 +141,7 @@ public class ReaderActivity extends Activity {
     }
 
     private void returnToPage() {
+        speech.stop();
         if (getIntent().getBooleanExtra(EXTRA_RETURN_TO_SOURCE_TASK, false)) {
             moveTaskToBack(true);
         }
@@ -132,6 +165,14 @@ public class ReaderActivity extends Activity {
     private void showText(String text) {
         body.setText(text);
         updateSizeLabel();
+    }
+
+    private void readAloud() {
+        speech.speak(this, body.getText().toString());
+    }
+
+    private void stopVoice() {
+        speech.stop();
     }
 
     private void changeSize(int delta) {

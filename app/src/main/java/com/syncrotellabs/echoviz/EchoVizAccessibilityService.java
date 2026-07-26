@@ -57,6 +57,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
     private Button magLensButton;
     private BroadcastReceiver runtimeReceiver;
     private Handler mainHandler;
+    private final EchoVizSpeech speech = new EchoVizSpeech();
 
     private float downRawX;
     private float downRawY;
@@ -118,6 +119,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         hideMagLensExitButton();
         removeMenu();
         hideHandle();
+        speech.shutdown();
         super.onDestroy();
     }
 
@@ -456,13 +458,32 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         modeRow.setGravity(Gravity.CENTER);
         modeRow.setOrientation(LinearLayout.HORIZONTAL);
         Button readingMode = menuButton("Reading Mode");
+        readingMode.setMinWidth(dp(168));
         readingMode.setOnClickListener(v -> openReadingMode());
         modeRow.addView(readingMode);
 
-        magLensButton = menuButton(isMagLensMode() ? "Back to page" : "MagLens");
+        magLensButton = menuButton(magLensMenuLabel());
+        magLensButton.setMinWidth(dp(210));
+        magLensButton.setTextSize(18);
         magLensButton.setOnClickListener(v -> toggleMagnification());
         modeRow.addView(magLensButton);
         menu.addView(modeRow);
+
+        LinearLayout speechRow = new LinearLayout(this);
+        speechRow.setGravity(Gravity.CENTER);
+        speechRow.setOrientation(LinearLayout.HORIZONTAL);
+        Button readAloud = menuButton("Read Aloud");
+        readAloud.setMinWidth(dp(142));
+        readAloud.setOnClickListener(v -> readCurrentScreenAloud());
+        speechRow.addView(readAloud);
+
+        Button stopVoice = menuButton("Stop Voice");
+        stopVoice.setMinWidth(dp(170));
+        stopVoice.setSingleLine(true);
+        stopVoice.setTextSize(17);
+        stopVoice.setOnClickListener(v -> stopReadingAloud());
+        speechRow.addView(stopVoice);
+        menu.addView(speechRow);
 
         Button exitButton = dangerButton("Exit EchoViz");
         exitButton.setOnClickListener(v -> showExitConfirmation());
@@ -505,7 +526,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
 
         DisplayMetrics metrics = getResources().getDisplayMetrics();
         int menuWidth = menu.getWidth() > 0 ? menu.getWidth() : dp(300);
-        int menuHeight = menu.getHeight() > 0 ? menu.getHeight() : dp(220);
+        int menuHeight = menu.getHeight() > 0 ? menu.getHeight() : dp(280);
         boolean handleOnLeft = handleParams.x + handleParams.width / 2 < metrics.widthPixels / 2;
         int targetX = handleOnLeft
                 ? handleParams.x + handleParams.width + dp(4)
@@ -590,6 +611,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
     }
 
     private void closeEchoViz() {
+        speech.stop();
         EchoVizRuntime.setActive(this, false);
         if (isMagLensMode()) {
             getMagnificationController().reset(true);
@@ -687,6 +709,27 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         removeMenu();
     }
 
+    private void readCurrentScreenAloud() {
+        String text = extractVisibleText();
+        if (text.trim().isEmpty()) {
+            Toast.makeText(this, "No readable text found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (speech.speak(this, text)) {
+            Toast.makeText(this, "Reading aloud", Toast.LENGTH_SHORT).show();
+            removeMenu();
+        } else {
+            Toast.makeText(this, "Text-to-speech unavailable", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void stopReadingAloud() {
+        speech.stop();
+        Toast.makeText(this, "Voice stopped", Toast.LENGTH_SHORT).show();
+        removeMenu();
+    }
+
     private String extractVisibleText() {
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null) {
@@ -734,7 +777,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
             controller.reset(true);
             magLensActive = false;
             if (magLensButton != null) {
-                magLensButton.setText("MagLens");
+                magLensButton.setText(magLensMenuLabel());
             }
             restoreNormalHandlePosition();
             updateHandleForMagLensMode(false);
@@ -758,7 +801,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
             saveNormalHandlePosition();
         }
         if (changed && magLensButton != null) {
-            magLensButton.setText("Back to page");
+            magLensButton.setText(magLensMenuLabel());
         }
         if (changed) {
             magLensActive = true;
@@ -781,6 +824,10 @@ public class EchoVizAccessibilityService extends AccessibilityService {
 
     private boolean isMagLensMode() {
         return magLensActive || isMagnified();
+    }
+
+    private String magLensMenuLabel() {
+        return isMagLensMode() ? "Back to\npage" : "Mag\nLens";
     }
 
     private void updateHandleForMagLensMode(boolean active) {
