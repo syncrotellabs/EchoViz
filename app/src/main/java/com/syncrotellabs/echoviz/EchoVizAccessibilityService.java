@@ -757,7 +757,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         if (!url.isEmpty()) {
             intent.putExtra(WebReaderActivity.EXTRA_URL, url);
         } else {
-            Toast.makeText(this, "No web link found. Try sharing the page to EchoViz.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "No web link found. Paste or share a link in Web Reader.", Toast.LENGTH_LONG).show();
         }
         intent.putExtra(WebReaderActivity.EXTRA_RETURN_TO_SOURCE_TASK, true);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

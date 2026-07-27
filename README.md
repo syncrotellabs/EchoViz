@@ -15,6 +15,7 @@ The app is built for a real-world use case: making phone reading more practical 
 - Quick text controls: `-`, `100%`, and `+`.
 - Text scaling is relative to the user's captured baseline, so EchoViz `100%` means "the phone text size when setup was completed."
 - Web Reader opens links in an EchoViz-controlled WebView with direct webpage text zoom controls.
+- Web Reader includes a visible link field with `Paste Link` and `Go` for pages Android cannot expose through Accessibility.
 - Web Reader includes `Clean Article`, a best-effort article extractor that opens page text in Reading Mode.
 - Reading Mode for large, calm display of shared text or text exposed through Android Accessibility.
 - Reading Mode includes a `Back to page` button that returns to the underlying app/task.
@@ -34,6 +35,7 @@ EchoViz uses Android Accessibility APIs and system text-size settings. That mean
 - The `+`, `100%`, and `-` buttons adjust Android's system font scale relative to EchoViz's saved baseline.
 - Android does not allow one accessibility overlay to directly restyle text inside every third-party app or webpage independently.
 - Chrome and other browsers may ignore Android system font scaling for webpage content. Web Reader is the reliable EchoViz-controlled path for links and article pages.
+- Android may not expose the current browser URL to Accessibility. In that case, copy the link and use `Paste Link`, or share the page to EchoViz.
 - `Clean Article` works best on article pages with normal text. Login walls, unusual page layouts, and image-only text may not extract cleanly.
 - Some apps expose rich text to Accessibility; others expose very little. Reading Mode quality depends on what the foreground app makes available.
 - Read Aloud uses Android's built-in Text-to-Speech engine. Available voices and offline behavior depend on the TTS engine installed on the phone.

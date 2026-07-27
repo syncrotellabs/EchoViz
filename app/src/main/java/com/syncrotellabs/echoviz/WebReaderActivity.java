@@ -1,19 +1,28 @@
 package com.syncrotellabs.echoviz;
 
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -53,10 +62,14 @@ public class WebReaderActivity extends Activity {
                     + "})()";
 
     private LinearLayout root;
+    private EditText addressInput;
     private TextView zoomLabel;
+    private TextView statusLabel;
     private Button cleanArticleButton;
     private WebView webView;
     private int textZoom = DEFAULT_TEXT_ZOOM;
+    private boolean pageHadMainFrameError;
+    private boolean currentPageCanCleanArticle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,6 +108,51 @@ public class WebReaderActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT
         ));
 
+        addressInput = new EditText(this);
+        addressInput.setSingleLine(true);
+        addressInput.setSelectAllOnFocus(true);
+        addressInput.setHint("Paste or type link");
+        addressInput.setTextSize(17);
+        addressInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        addressInput.setOnEditorActionListener((view, actionId, event) -> {
+            if (event == null || event.getKeyCode() == KeyEvent.KEYCODE_ENTER) {
+                loadEnteredUrl();
+                return true;
+            }
+            return false;
+        });
+        root.addView(addressInput, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+
+        LinearLayout addressActions = new LinearLayout(this);
+        addressActions.setGravity(Gravity.CENTER_VERTICAL);
+        addressActions.setOrientation(LinearLayout.HORIZONTAL);
+        addressActions.setPadding(0, dp(8), 0, 0);
+
+        Button paste = toolButton("Paste Link");
+        paste.setTextSize(16);
+        paste.setOnClickListener(v -> pasteLinkAndLoad());
+        addressActions.addView(paste, new LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f
+        ));
+
+        Button go = toolButton("Go");
+        go.setTextSize(16);
+        go.setOnClickListener(v -> loadEnteredUrl());
+        LinearLayout.LayoutParams goParams = new LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f
+        );
+        goParams.setMargins(dp(8), 0, 0, 0);
+        addressActions.addView(go, goParams);
+
+        root.addView(addressActions);
+
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
@@ -130,26 +188,91 @@ public class WebReaderActivity extends Activity {
         );
         cleanParams.setMargins(0, 0, 0, dp(10));
         root.addView(cleanArticleButton, cleanParams);
+        setCleanArticleAvailable(false);
+
+        statusLabel = new TextView(this);
+        statusLabel.setGravity(Gravity.CENTER);
+        statusLabel.setTextColor(Color.rgb(16, 20, 24));
+        statusLabel.setTextSize(15);
+        statusLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        statusLabel.setText(" ");
+        statusLabel.setPadding(0, 0, 0, dp(8));
+        root.addView(statusLabel, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
 
         webView = new WebView(this);
         webView.setBackgroundColor(Color.WHITE);
-        webView.setWebChromeClient(new WebChromeClient());
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onProgressChanged(WebView view, int newProgress) {
+                if (!currentPageCanCleanArticle || pageHadMainFrameError) {
+                    return;
+                }
+                if (newProgress >= 80) {
+                    showStatus("Loaded " + hostLabel(view == null ? null : view.getUrl()));
+                    setCleanArticleAvailable(true);
+                } else if (newProgress > 0) {
+                    showStatus("Loading " + hostLabel(view == null ? null : view.getUrl()) + " " + newProgress + "%");
+                }
+            }
+        });
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                if (request != null && request.getUrl() != null) {
-                    view.loadUrl(request.getUrl().toString());
-                    return true;
-                }
                 return false;
+            }
+
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                pageHadMainFrameError = false;
+                setCleanArticleAvailable(false);
+                showStatus(currentPageCanCleanArticle ? "Loading " + hostLabel(url) : "Preparing Web Reader");
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                if (!pageHadMainFrameError) {
+                    showStatus(currentPageCanCleanArticle ? "Loaded " + hostLabel(url) : "Paste a link, then tap Go.");
+                    setCleanArticleAvailable(currentPageCanCleanArticle);
+                }
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                if (request != null && request.isForMainFrame()) {
+                    pageHadMainFrameError = true;
+                    String description = error == null || error.getDescription() == null
+                            ? "Could not load page"
+                            : error.getDescription().toString();
+                    currentPageCanCleanArticle = false;
+                    showStatus(description);
+                    setCleanArticleAvailable(false);
+                }
+            }
+
+            @Override
+            public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+                if (request != null && request.isForMainFrame() && errorResponse != null) {
+                    int statusCode = errorResponse.getStatusCode();
+                    if (statusCode >= 400) {
+                        pageHadMainFrameError = true;
+                        currentPageCanCleanArticle = false;
+                        showStatus("Page returned HTTP " + statusCode);
+                        setCleanArticleAvailable(false);
+                    }
+                }
             }
         });
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        settings.setLoadsImagesAutomatically(true);
+        settings.setBlockNetworkLoads(false);
         settings.setLoadWithOverviewMode(false);
-        settings.setUseWideViewPort(false);
+        settings.setUseWideViewPort(true);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
         setTextZoom(textZoom);
@@ -169,7 +292,7 @@ public class WebReaderActivity extends Activity {
             showMissingUrl();
             return;
         }
-        webView.loadUrl(url);
+        loadWebUrl(url);
     }
 
     private String readIntentUrl(Intent intent) {
@@ -192,14 +315,74 @@ public class WebReaderActivity extends Activity {
     }
 
     private void showMissingUrl() {
+        if (addressInput != null) {
+            addressInput.setText("");
+        }
+        currentPageCanCleanArticle = false;
+        setCleanArticleAvailable(false);
+        showStatus("Paste a link, then tap Go.");
         String html = "<html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
                 + "<style>body{font-family:sans-serif;line-height:1.35;padding:20px;color:#101418;}"
                 + "h1{font-size:1.4em;}p{font-size:1em;}</style></head><body>"
                 + "<h1>Web Reader</h1>"
                 + "<p>EchoViz could not find a web link on this screen.</p>"
-                + "<p>Open the page in Chrome, use Share, and choose EchoViz. You can also use Reading Mode for visible page text.</p>"
+                + "<p>Paste or type a link above and tap Go. You can also open the page in Chrome, use Share, and choose EchoViz.</p>"
                 + "</body></html>";
         webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
+    }
+
+    private void loadEnteredUrl() {
+        if (addressInput == null) {
+            return;
+        }
+        loadWebUrl(addressInput.getText().toString());
+    }
+
+    private void pasteLinkAndLoad() {
+        String url = readClipboardUrl();
+        if (url.isEmpty()) {
+            Toast.makeText(this, "No copied link found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        loadWebUrl(url);
+    }
+
+    private void loadWebUrl(String rawUrl) {
+        String url = UrlExtractor.firstUrl(rawUrl);
+        if (url.isEmpty()) {
+            Toast.makeText(this, "Enter a web link first", Toast.LENGTH_SHORT).show();
+            showMissingUrl();
+            return;
+        }
+
+        if (addressInput != null) {
+            addressInput.setText(displayUrl(url));
+            addressInput.setSelection(0);
+        }
+        pageHadMainFrameError = false;
+        currentPageCanCleanArticle = true;
+        setCleanArticleAvailable(false);
+        showStatus("Loading " + hostLabel(url));
+        webView.loadUrl(url);
+    }
+
+    private String readClipboardUrl() {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard == null || !clipboard.hasPrimaryClip()) {
+            return "";
+        }
+        ClipData clip = clipboard.getPrimaryClip();
+        if (clip == null) {
+            return "";
+        }
+        for (int i = 0; i < clip.getItemCount(); i++) {
+            CharSequence text = clip.getItemAt(i).coerceToText(this);
+            String url = UrlExtractor.firstUrl(text == null ? "" : text.toString());
+            if (!url.isEmpty()) {
+                return url;
+            }
+        }
+        return "";
     }
 
     private void returnToPage() {
@@ -288,6 +471,53 @@ public class WebReaderActivity extends Activity {
         button.setTextSize(20);
         button.setBackgroundResource(R.drawable.button_round_dark);
         return button;
+    }
+
+    private void setCleanArticleAvailable(boolean available) {
+        if (cleanArticleButton == null) {
+            return;
+        }
+        cleanArticleButton.setEnabled(available);
+        cleanArticleButton.setAlpha(available ? 1.0f : 0.6f);
+        if (available) {
+            cleanArticleButton.setText("Clean Article");
+        }
+    }
+
+    private void showStatus(String message) {
+        if (statusLabel == null) {
+            return;
+        }
+        statusLabel.setText(message == null || message.trim().isEmpty() ? " " : message.trim());
+    }
+
+    private String hostLabel(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return "page";
+        }
+        try {
+            Uri uri = Uri.parse(url);
+            String host = uri.getHost();
+            return host == null || host.trim().isEmpty() ? "page" : host;
+        } catch (RuntimeException ignored) {
+            return "page";
+        }
+    }
+
+    private String displayUrl(String url) {
+        if (url == null) {
+            return "";
+        }
+        String display = url.trim();
+        if (display.regionMatches(true, 0, "https://", 0, 8)) {
+            display = display.substring(8);
+        } else if (display.regionMatches(true, 0, "http://", 0, 7)) {
+            display = display.substring(7);
+        }
+        if (display.endsWith("/") && display.indexOf('/') == display.length() - 1) {
+            display = display.substring(0, display.length() - 1);
+        }
+        return display;
     }
 
     private int dp(int value) {
