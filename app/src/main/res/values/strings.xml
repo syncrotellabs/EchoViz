@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">EchoViz</string>
     <string name="reader_mode">Reading Mode</string>
+    <string name="web_reader">Web Reader</string>
     <string name="mag_lens">MagLens</string>
     <string name="accessibility_service_name">EchoViz Floating Controls</string>
     <string name="accessibility_service_summary">Floating controls for larger text, reading mode, and magnification.</string>

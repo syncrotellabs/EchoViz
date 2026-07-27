@@ -1,6 +1,6 @@
 # EchoViz
 
-EchoViz is a native Android accessibility prototype for low-vision reading. It provides a movable floating Echo logo button that opens quick controls for larger text, Reading Mode, MagLens, and app shutdown.
+EchoViz is a native Android accessibility prototype for low-vision reading. It provides a movable floating Echo logo button that opens quick controls for larger text, Web Reader, Reading Mode, MagLens, and app shutdown.
 
 It started as a practical app for my wife: Android's built-in options help, but they can feel clumsy, and she needed a better way to read and navigate on her phone.
 
@@ -14,6 +14,7 @@ The app is built for a real-world use case: making phone reading more practical 
 - Floating menu opens inward from whichever side the bubble is on.
 - Quick text controls: `-`, `100%`, and `+`.
 - Text scaling is relative to the user's captured baseline, so EchoViz `100%` means "the phone text size when setup was completed."
+- Web Reader opens links in an EchoViz-controlled WebView with direct webpage text zoom controls.
 - Reading Mode for large, calm display of shared text or text exposed through Android Accessibility.
 - Reading Mode includes a `Back to page` button that returns to the underlying app/task.
 - Read Aloud uses Android Text-to-Speech to speak the visible page text or the current Reading Mode text.
@@ -31,6 +32,7 @@ EchoViz uses Android Accessibility APIs and system text-size settings. That mean
 
 - The `+`, `100%`, and `-` buttons adjust Android's system font scale relative to EchoViz's saved baseline.
 - Android does not allow one accessibility overlay to directly restyle text inside every third-party app or webpage independently.
+- Chrome and other browsers may ignore Android system font scaling for webpage content. Web Reader is the reliable EchoViz-controlled path for links and article pages.
 - Some apps expose rich text to Accessibility; others expose very little. Reading Mode quality depends on what the foreground app makes available.
 - Read Aloud uses Android's built-in Text-to-Speech engine. Available voices and offline behavior depend on the TTS engine installed on the phone.
 - MagLens uses Android's built-in magnification controller, so it magnifies the screen rather than rewriting app layouts.
@@ -43,6 +45,7 @@ EchoViz is designed to avoid storing or transmitting screen content.
 - No backend service is included.
 - No screen content is uploaded.
 - Shared or accessible text may be displayed locally in Reading Mode.
+- URLs opened in Web Reader load locally inside Android WebView.
 - The app stores only local preferences such as font baseline, requested text scale, runtime active state, and floating bubble position.
 
 ## Permissions
@@ -54,7 +57,7 @@ EchoViz currently requests:
 - `android.permission.WRITE_SETTINGS`
   - Required to adjust Android's system font scale.
 - `android.permission.INTERNET`
-  - Present in the manifest, though the current prototype does not use a network backend.
+  - Required for Web Reader to load web pages. EchoViz still has no network backend.
 
 Android requires the user to manually enable Accessibility and system setting modification. EchoViz's setup screen guides the user to both places.
 
@@ -72,8 +75,10 @@ EchoViz/
         LaunchActivity.java
         MainActivity.java
         ReaderActivity.java
+        WebReaderActivity.java
         EchoVizSpeech.java
         SetupStatus.java
+        UrlExtractor.java
       res/
         drawable/
         drawable-nodpi/

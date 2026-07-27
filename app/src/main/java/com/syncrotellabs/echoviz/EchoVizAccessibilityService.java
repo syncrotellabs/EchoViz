@@ -166,6 +166,7 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         String className = event.getClassName().toString();
         return MainActivity.class.getName().equals(className)
                 || ReaderActivity.class.getName().equals(className)
+                || WebReaderActivity.class.getName().equals(className)
                 || LaunchActivity.class.getName().equals(className);
     }
 
@@ -489,6 +490,16 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         modeRow.addView(magLensButton);
         menu.addView(modeRow);
 
+        Button webReaderButton = menuButton("Web Reader");
+        webReaderButton.setTextSize(17);
+        webReaderButton.setOnClickListener(v -> openWebReader());
+        LinearLayout.LayoutParams webReaderParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        webReaderParams.setMargins(dp(4), dp(6), dp(4), dp(0));
+        menu.addView(webReaderButton, webReaderParams);
+
         LinearLayout speechRow = new LinearLayout(this);
         speechRow.setGravity(Gravity.CENTER);
         speechRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -735,6 +746,20 @@ public class EchoVizAccessibilityService extends AccessibilityService {
         Intent intent = new Intent(this, ReaderActivity.class);
         intent.putExtra(ReaderActivity.EXTRA_READER_TEXT, text);
         intent.putExtra(ReaderActivity.EXTRA_RETURN_TO_SOURCE_TASK, true);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        removeMenu();
+    }
+
+    private void openWebReader() {
+        String url = UrlExtractor.firstUrl(extractVisibleText());
+        Intent intent = new Intent(this, WebReaderActivity.class);
+        if (!url.isEmpty()) {
+            intent.putExtra(WebReaderActivity.EXTRA_URL, url);
+        } else {
+            Toast.makeText(this, "No web link found. Try sharing the page to EchoViz.", Toast.LENGTH_LONG).show();
+        }
+        intent.putExtra(WebReaderActivity.EXTRA_RETURN_TO_SOURCE_TASK, true);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         removeMenu();

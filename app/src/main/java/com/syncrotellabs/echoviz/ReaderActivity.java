@@ -26,6 +26,9 @@ public class ReaderActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (openSharedUrlIfPresent(getIntent())) {
+            return;
+        }
         setContentView(buildContent());
         showText(readIntentText(getIntent()));
         applyTheme();
@@ -35,6 +38,9 @@ public class ReaderActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        if (openSharedUrlIfPresent(intent)) {
+            return;
+        }
         showText(readIntentText(intent));
     }
 
@@ -146,6 +152,24 @@ public class ReaderActivity extends Activity {
             moveTaskToBack(true);
         }
         finish();
+    }
+
+    private boolean openSharedUrlIfPresent(Intent intent) {
+        if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())) {
+            return false;
+        }
+
+        CharSequence shared = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
+        String url = shared == null ? "" : UrlExtractor.firstUrl(shared.toString());
+        if (url.isEmpty()) {
+            return false;
+        }
+
+        Intent webReader = new Intent(this, WebReaderActivity.class);
+        webReader.putExtra(WebReaderActivity.EXTRA_URL, url);
+        startActivity(webReader);
+        finish();
+        return true;
     }
 
     private String readIntentText(Intent intent) {
