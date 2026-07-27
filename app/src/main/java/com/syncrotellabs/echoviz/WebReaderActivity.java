@@ -16,6 +16,10 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import org.json.JSONObject;
+import org.json.JSONTokener;
 
 public class WebReaderActivity extends Activity {
     public static final String EXTRA_URL = "com.syncrotellabs.echoviz.extra.WEB_READER_URL";
@@ -25,9 +29,32 @@ public class WebReaderActivity extends Activity {
     private static final int MIN_TEXT_ZOOM = 80;
     private static final int MAX_TEXT_ZOOM = 300;
     private static final int TEXT_ZOOM_STEP = 20;
+    private static final int MIN_ARTICLE_CHARS = 280;
+    private static final int MAX_ARTICLE_CHARS = 60000;
+    private static final String ARTICLE_EXTRACT_SCRIPT =
+            "(function(){"
+                    + "function norm(t){return (t||'').replace(/\\s+/g,' ').trim();}"
+                    + "function bad(el){var c=((el.id||'')+' '+(el.className||'')).toLowerCase();"
+                    + "return /comment|nav|footer|header|sidebar|related|ad-| ads|advert|promo|subscribe|menu|share|social|cookie/.test(c);}"
+                    + "function score(el){var text=norm(el.innerText||'');if(text.length<120){return 0;}"
+                    + "var tag=(el.tagName||'').toLowerCase();var c=((el.id||'')+' '+(el.className||'')).toLowerCase();"
+                    + "var s=text.length+(el.querySelectorAll('p').length*140)+(el.querySelectorAll('h1,h2,h3').length*80);"
+                    + "if(/article|content|story|post|entry|main|body/.test(c)){s+=1000;}"
+                    + "if(tag==='article'||tag==='main'){s+=1600;}if(bad(el)){s-=2500;}return s;}"
+                    + "var title=norm((document.querySelector('h1')||{}).innerText||document.title||'');"
+                    + "var candidates=Array.prototype.slice.call(document.querySelectorAll('article,main,[role=\"main\"],section,div'));"
+                    + "var best=document.body,bestScore=0;for(var i=0;i<candidates.length;i++){var s=score(candidates[i]);if(s>bestScore){bestScore=s;best=candidates[i];}}"
+                    + "var nodes=Array.prototype.slice.call(best.querySelectorAll('h1,h2,h3,p,li,blockquote'));"
+                    + "var seen={},parts=[];for(var j=0;j<nodes.length;j++){var n=nodes[j];if(bad(n)){continue;}var text=norm(n.innerText||'');"
+                    + "if(text.length<35&&!/^h[1-3]$/i.test(n.tagName||'')){continue;}if(text===title){continue;}if(seen[text]){continue;}"
+                    + "seen[text]=true;parts.push(text);if(parts.join('\\n\\n').length>65000){break;}}"
+                    + "var body=parts.join('\\n\\n');if(body.length<280){body=norm(best.innerText||'');}"
+                    + "return JSON.stringify({title:title,text:body,url:location.href});"
+                    + "})()";
 
     private LinearLayout root;
     private TextView zoomLabel;
+    private Button cleanArticleButton;
     private WebView webView;
     private int textZoom = DEFAULT_TEXT_ZOOM;
 
@@ -94,6 +121,15 @@ public class WebReaderActivity extends Activity {
         toolbar.addView(larger);
 
         root.addView(toolbar);
+
+        cleanArticleButton = secondaryButton("Clean Article");
+        cleanArticleButton.setOnClickListener(v -> cleanArticle());
+        LinearLayout.LayoutParams cleanParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        cleanParams.setMargins(0, 0, 0, dp(10));
+        root.addView(cleanArticleButton, cleanParams);
 
         webView = new WebView(this);
         webView.setBackgroundColor(Color.WHITE);
@@ -173,6 +209,56 @@ public class WebReaderActivity extends Activity {
         finish();
     }
 
+    private void cleanArticle() {
+        if (webView == null) {
+            return;
+        }
+
+        cleanArticleButton.setEnabled(false);
+        cleanArticleButton.setText("Cleaning...");
+        webView.evaluateJavascript(ARTICLE_EXTRACT_SCRIPT, this::openCleanArticleResult);
+    }
+
+    private void openCleanArticleResult(String rawResult) {
+        cleanArticleButton.setEnabled(true);
+        cleanArticleButton.setText("Clean Article");
+
+        String title;
+        String text;
+        try {
+            Object decoded = new JSONTokener(rawResult == null ? "null" : rawResult).nextValue();
+            Object articlePayload = decoded instanceof String
+                    ? new JSONTokener((String) decoded).nextValue()
+                    : decoded;
+            JSONObject article = articlePayload instanceof JSONObject ? (JSONObject) articlePayload : new JSONObject();
+            title = article.optString("title", "").trim();
+            text = article.optString("text", "").trim();
+        } catch (Exception ignored) {
+            title = "";
+            text = "";
+        }
+
+        if (text.length() < MIN_ARTICLE_CHARS) {
+            Toast.makeText(this, "Clean Article could not find enough readable text on this page.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        String readerText = buildReaderText(title, text);
+        Intent intent = new Intent(this, ReaderActivity.class);
+        intent.putExtra(ReaderActivity.EXTRA_READER_TEXT, readerText);
+        startActivity(intent);
+    }
+
+    private String buildReaderText(String title, String text) {
+        String body = text.length() > MAX_ARTICLE_CHARS
+                ? text.substring(0, MAX_ARTICLE_CHARS) + "\n\n[Article shortened by EchoViz.]"
+                : text;
+        if (title == null || title.trim().isEmpty()) {
+            return body;
+        }
+        return title.trim() + "\n\n" + body;
+    }
+
     private void changeTextZoom(int delta) {
         setTextZoom(textZoom + delta);
     }
@@ -194,6 +280,13 @@ public class WebReaderActivity extends Activity {
         button.setTextColor(Color.WHITE);
         button.setAllCaps(false);
         button.setBackgroundResource(R.drawable.button_round);
+        return button;
+    }
+
+    private Button secondaryButton(String label) {
+        Button button = toolButton(label);
+        button.setTextSize(20);
+        button.setBackgroundResource(R.drawable.button_round_dark);
         return button;
     }
 
